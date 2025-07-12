@@ -1,0 +1,60 @@
+{
+  "festivos_fijos": {
+    "01-01": "Año Nuevo",
+    "05-01": "Día del Trabajo",
+    "07-20": "Día de la Independencia",
+    "08-07": "Batalla de Boyacá",
+    "12-08": "Día de la Inmaculada Concepción",
+    "12-25": "Navidad"
+  },
+  "festivos_moviles": {
+    "Reyes Magos": {
+      "mes": 1,
+      "dias": [6, 7, 8, 9, 10, 11]
+    },
+    "San José": {
+      "mes": 3,
+      "dias": [19, 20, 21, 22, 23, 24, 25]
+    },
+    "Jueves Santo": {
+      "mes": 3,
+      "dias": [24, 25, 26, 27, 28, 29, 30, 31]
+    },
+    "Viernes Santo": {
+      "mes": 3,
+      "dias": [25, 26, 27, 28, 29, 30, 31]
+    },
+    "Ascensión": {
+      "mes": 5,
+      "dias": [6, 7, 8, 9, 10, 11, 12, 13]
+    },
+    "Corpus Christi": {
+      "mes": 6,
+      "dias": [3, 4, 5, 6, 7, 8, 9, 10]
+    },
+    "Sagrado Corazón": {
+      "mes": 6,
+      "dias": [10, 11, 12, 13, 14, 15, 16, 17]
+    },
+    "San Pedro y San Pablo": {
+      "mes": 6,
+      "dias": [29, 30]
+    },
+    "Asunción de la Virgen": {
+      "mes": 8,
+      "dias": [15, 16, 17, 18, 19]
+    },
+    "Día de la Raza": {
+      "mes": 10,
+      "dias": [12, 13, 14, 15, 16, 17]
+    },
+    "Todos los Santos": {
+      "mes": 11,
+      "dias": [1, 2, 3, 4, 5, 6]
+    },
+    "Independencia de Cartagena": {
+      "mes": 11,
+      "dias": [11, 12, 13, 14, 15, 16, 17]
+    }
+  }
+} 
