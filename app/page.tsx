@@ -2010,8 +2010,8 @@ export default function ControlHorasExtras() {
       horasCompensatorias = valorCompensatorio / valorHora;
     }
     
-    // Calcular total a pagar (recargos + extras dentro del tope)
-    const totalAPagar = valorHorasNormales + valorHorasNocturnas + valorHorasFestivoDiurnas + 
+    // Calcular total a pagar (solo recargos + extras dentro del tope, sin horas normales)
+    const totalAPagar = valorHorasNocturnas + valorHorasFestivoDiurnas + 
                        valorHorasFestivoNocturnas + valorExtrasAPagar;
     
     // Crear desglose para el tooltip - solo mostrar recargos y extras (sin horas normales)
