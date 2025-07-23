@@ -502,6 +502,25 @@ export default function ControlHorasExtras() {
     horasExtDiurnasFestivos: 0,
     horasExtNocturnasFestivos: 0,
   })
+  
+  // Nuevo estado para rastrear progreso diario
+  const [progresoDiario, setProgresoDiario] = useState<{[key: string]: {
+    minutosAcumuladosHastaEseDia: number,
+    minutosExtrasAcumuladosHasta: number,
+    valorExtrasAcumuladoHasta: number,
+    topeHorasAlcanzado: boolean,
+    tope50PorAlcanzado: boolean,
+    desgloseDia: {
+      recNocturno: number,
+      recDomNoct: number, 
+      recDomDia: number,
+      extDia: number,
+      extNoct: number,
+      extDomDia: number,
+      extDomNoct: number
+    }
+  }}>({})
+  
   const [semanaActual, setSemanaActual] = useState(0)
   const [mostrarModalCargos, setMostrarModalCargos] = useState(false)
   const [mostrarModalAuth, setMostrarModalAuth] = useState(false)
@@ -1070,22 +1089,62 @@ export default function ControlHorasExtras() {
       'nocturnaFestivo': 0
     };
     
+    // Nuevo objeto para rastrear progreso diario
+    let progresoTemporalDiario: {[key: string]: {
+      minutosAcumuladosHastaEseDia: number,
+      minutosExtrasAcumuladosHasta: number,
+      valorExtrasAcumuladoHasta: number,
+      topeHorasAlcanzado: boolean,
+      tope50PorAlcanzado: boolean,
+      desgloseDia: {
+        recNocturno: number,
+        recDomNoct: number, 
+        recDomDia: number,
+        extDia: number,
+        extNoct: number,
+        extDomDia: number,
+        extDomNoct: number
+      }
+    }} = {}
+    
     // Procesar cada día con datos
-    Object.entries(diasMes).forEach(([fecha, dia]) => {
+    const fechasOrdenadas = Object.keys(diasMes).sort() // Procesar en orden cronológico
+    
+    fechasOrdenadas.forEach((fecha) => {
+      const dia = diasMes[fecha]
       if (dia.total === "Error") return
+      
       const fechaDate = parse(fecha, "yyyy-MM-dd", new Date())
       const esFestivo = dia.isHoliday || dia.isSunday; // Considerar domingos como festivos para cálculo
+      
+      // Variables para contar el desglose de este día específico
+      let recNocturnoEseDia = 0
+      let recDomNoctEseDia = 0
+      let recDomDiaEseDia = 0
+      let extDiaEseDia = 0
+      let extNoctEseDia = 0
+      let extDomDiaEseDia = 0
+      let extDomNoctEseDia = 0
+      let minutosExtrasAcumuladosAntes = dineroExtrasAcumulado
+      
+      // Guardar estado al inicio del día
+      const minutosAcumuladosAntesDelDia = totalMinutos
+      const topeHorasAlcanzadoAntesDelDia = totalMinutos >= 190 * 60
+      const tope50PorAlcanzadoAntesDelDia = topeAlcanzado
+      
       // Procesar ambos turnos
       const turnos = [
         { entrada: dia.entrada1, salida: dia.salida1 },
         { entrada: dia.entrada2, salida: dia.salida2 },
       ]
+      
       turnos.forEach(({ entrada, salida }) => {
         if (!entrada || !salida) return
         let horaEntrada = parse(entrada, "HH:mm", fechaDate)
         let horaSalida = parse(salida, "HH:mm", fechaDate)
         if (horaSalida < horaEntrada) horaSalida = addDays(horaSalida, 1)
         let horaActual = new Date(horaEntrada)
+        
         while (horaActual < horaSalida) {
           const horaFin = new Date(horaActual)
           horaFin.setMinutes(horaFin.getMinutes() + 1)
@@ -1096,9 +1155,18 @@ export default function ControlHorasExtras() {
 
           if (totalMinutos <= 190 * 60) {
             // RECARGOS
-            if (!esFestivo && esNocturno) recNocturno++ // L-S (18:00-06:00) 35%
-            if (esFestivo && esNocturno) recDomNoct++   // Dom/fest (18:00-06:00) 235%
-            if (esFestivo && esDiurno) recDomDia++      // Dom/fest (06:00-18:00) 200%
+            if (!esFestivo && esNocturno) {
+              recNocturno++ // L-S (18:00-06:00) 35%
+              recNocturnoEseDia++
+            }
+            if (esFestivo && esNocturno) {
+              recDomNoct++   // Dom/fest (18:00-06:00) 235%
+              recDomNoctEseDia++
+            }
+            if (esFestivo && esDiurno) {
+              recDomDia++      // Dom/fest (06:00-18:00) 200%
+              recDomDiaEseDia++
+            }
           } else {
             // HORAS EXTRAS
             let valorEsteMinuto = 0
@@ -1106,25 +1174,37 @@ export default function ControlHorasExtras() {
             
             // Solo un tipo de hora puede aplicar para cada minuto
             if (!esFestivo && esDiurno) { 
-              if (!topeAlcanzado) extDia++; 
+              if (!topeAlcanzado) {
+                extDia++
+                extDiaEseDia++
+              }
               valorEsteMinuto = valorMinuto * 1.25; // L-S (06:00-18:00) 125%
               tipoHoraActual = 'diurnaLV';
               if (!topeAlcanzado) minutosExtraPorTipo['diurnaLV']++;
             }
             else if (!esFestivo && esNocturno) { 
-              if (!topeAlcanzado) extNoct++; 
+              if (!topeAlcanzado) {
+                extNoct++
+                extNoctEseDia++
+              }
               valorEsteMinuto = valorMinuto * 1.75; // L-S (18:00-06:00) 175%
               tipoHoraActual = 'nocturnaLV';
               if (!topeAlcanzado) minutosExtraPorTipo['nocturnaLV']++;
             }
             else if (esFestivo && esDiurno) { 
-              if (!topeAlcanzado) extDomDia++; 
+              if (!topeAlcanzado) {
+                extDomDia++
+                extDomDiaEseDia++
+              }
               valorEsteMinuto = valorMinuto * 2.25; // Dom/fest (06:00-18:00) 225%
               tipoHoraActual = 'diurnaFestivo';
               if (!topeAlcanzado) minutosExtraPorTipo['diurnaFestivo']++;
             }
             else if (esFestivo && esNocturno) { 
-              if (!topeAlcanzado) extDomNoct++; 
+              if (!topeAlcanzado) {
+                extDomNoct++
+                extDomNoctEseDia++
+              }
               valorEsteMinuto = valorMinuto * 2.75; // Dom/fest (18:00-06:00) 275%
               tipoHoraActual = 'nocturnaFestivo';
               if (!topeAlcanzado) minutosExtraPorTipo['nocturnaFestivo']++;
@@ -1183,7 +1263,28 @@ export default function ControlHorasExtras() {
           horaActual = horaFin
         }
       })
+      
+      // Guardar el progreso diario al final de cada día
+      progresoTemporalDiario[fecha] = {
+        minutosAcumuladosHastaEseDia: totalMinutos,
+        minutosExtrasAcumuladosHasta: Math.max(0, totalMinutos - 190 * 60),
+        valorExtrasAcumuladoHasta: dineroExtrasAcumulado,
+        topeHorasAlcanzado: totalMinutos >= 190 * 60,
+        tope50PorAlcanzado: topeAlcanzado,
+        desgloseDia: {
+          recNocturno: recNocturnoEseDia,
+          recDomNoct: recDomNoctEseDia,
+          recDomDia: recDomDiaEseDia,
+          extDia: extDiaEseDia,
+          extNoct: extNoctEseDia,
+          extDomDia: extDomDiaEseDia,
+          extDomNoct: extDomNoctEseDia
+        }
+      }
     })
+
+    // Actualizar el estado del progreso diario
+    setProgresoDiario(progresoTemporalDiario)
 
     // Calcular valores monetarios
     const valorRecargoNocturnoLV = valorMinuto * recNocturno * 0.35
@@ -1810,276 +1911,229 @@ export default function ControlHorasExtras() {
       valor: number
     }[],
     horasCompensatorias: number,
-    valorCompensatorio: number
+    valorCompensatorio: number,
+    esElDiaDelTope?: boolean
   } => {
     if (!dia.total || dia.total === "0:00" || dia.total === "Error") {
       return { 
         total: 0, 
         desglose: [],
         horasCompensatorias: 0,
-        valorCompensatorio: 0
+        valorCompensatorio: 0,
+        esElDiaDelTope: false
       };
     }
 
+    // Usar la información del progreso diario (ahora calculado automáticamente)
+    const progresoDeDia = progresoDiario[fechaStr];
+    if (progresoDeDia) {
+      // Usar valores del progreso diario calculado correctamente
+      const valorHora = salarioMensual / 190;
+      const valorMinuto = valorHora / 60;
+      const topeMaximo = salarioMensual * 0.5;
+      
+      // Obtener el desglose de horas de este día específico
+      const desglose = progresoDeDia.desgloseDia;
+      
+      // Calcular valores monetarios según las fórmulas especificadas
+      const valorRecargoNocturno = (desglose.recNocturno / 60) * valorHora * 0.35; // 35% recargo
+      const valorRecargoFestivoNocturno = (desglose.recDomNoct / 60) * valorHora * 2.35; // 235% recargo
+      const valorRecargoFestivoDiurno = (desglose.recDomDia / 60) * valorHora * 2.0; // 200% recargo
+      
+      // Calcular valores brutos de extras
+      const valorExtraDiurna = (desglose.extDia / 60) * valorHora * 1.25; // 125% recargo
+      const valorExtraNocturna = (desglose.extNoct / 60) * valorHora * 1.75; // 175% recargo
+      const valorExtraFestivoDiurna = (desglose.extDomDia / 60) * valorHora * 2.25; // 225% recargo
+      const valorExtraFestivoNocturna = (desglose.extDomNoct / 60) * valorHora * 2.75; // 275% recargo
+      
+      const totalExtrasEseDia = valorExtraDiurna + valorExtraNocturna + valorExtraFestivoDiurna + valorExtraFestivoNocturna;
+      
+      // Determinar si hay tiempo compensatorio usando la información del estado global
+      let valorExtrasAPagar = totalExtrasEseDia;
+      let horasCompensatorias = 0;
+      let valorCompensatorio = 0;
+      let esElDiaDelTope = false;
+      
+      // Verificar si hay tiempo compensatorio en el desglose global
+      const fechaObj = parse(fechaStr, 'yyyy-MM-dd', new Date());
+      const diaDelMes = fechaObj.getDate();
+      
+      // Calcular tiempo compensatorio total para este día específico desde el desglose global
+      let tiempoCompensatorioMinutos = 0;
+      
+      // Si se alcanzó el tope, calcular las horas compensatorias
+      if (progresoDeDia.tope50PorAlcanzado) {
+        const valorExtrasAcumuladoAntesDeDia = progresoDeDia.valorExtrasAcumuladoHasta - totalExtrasEseDia;
+        
+        if (valorExtrasAcumuladoAntesDeDia < topeMaximo) {
+          // Este es el día donde se alcanza el tope
+          esElDiaDelTope = true;
+          const espacioDisponible = topeMaximo - valorExtrasAcumuladoAntesDeDia;
+          
+          if (totalExtrasEseDia > espacioDisponible) {
+            valorExtrasAPagar = espacioDisponible;
+            valorCompensatorio = totalExtrasEseDia - espacioDisponible;
+            horasCompensatorias = valorCompensatorio / valorHora;
+          }
+        } else {
+          // El tope ya se había alcanzado, todo es compensatorio
+          valorExtrasAPagar = 0;
+          valorCompensatorio = totalExtrasEseDia;
+          horasCompensatorias = valorCompensatorio / valorHora;
+        }
+      }
+       
+       // Calcular total a pagar (solo recargos + extras dentro del tope)
+       const totalAPagar = valorRecargoNocturno + valorRecargoFestivoNocturno + 
+                          valorRecargoFestivoDiurno + valorExtrasAPagar;
+       
+       // Crear desglose para el tooltip
+       const desgloseArray = [];
+       
+       // Agregar recargos al desglose
+       if (desglose.recNocturno > 0) {
+         desgloseArray.push({
+           tipo: "Recargo nocturno L-S (35%)",
+           horas: formatHorasDecimales(desglose.recNocturno / 60),
+           valor: valorRecargoNocturno
+         });
+       }
+       
+       if (desglose.recDomDia > 0) {
+         desgloseArray.push({
+           tipo: "Recargo festivo diurno (200%)",
+           horas: formatHorasDecimales(desglose.recDomDia / 60),
+           valor: valorRecargoFestivoDiurno
+         });
+       }
+       
+       if (desglose.recDomNoct > 0) {
+         desgloseArray.push({
+           tipo: "Recargo festivo nocturno (235%)",
+           horas: formatHorasDecimales(desglose.recDomNoct / 60),
+           valor: valorRecargoFestivoNocturno
+         });
+       }
+       
+       // Agregar extras al desglose (solo la parte que se paga)
+       if (desglose.extDia > 0) {
+         const valorAPagarEsteItem = progresoDeDia.tope50PorAlcanzado && totalExtrasEseDia > 0 ? 
+           Math.min(valorExtraDiurna, valorExtrasAPagar * (valorExtraDiurna / totalExtrasEseDia)) : 
+           valorExtraDiurna;
+         
+         desgloseArray.push({
+           tipo: "Extra diurna L-S (125%)",
+           horas: formatHorasDecimales(desglose.extDia / 60),
+           valor: valorAPagarEsteItem
+         });
+       }
+       
+       if (desglose.extNoct > 0) {
+         const valorAPagarEsteItem = progresoDeDia.tope50PorAlcanzado && totalExtrasEseDia > 0 ? 
+           Math.min(valorExtraNocturna, valorExtrasAPagar * (valorExtraNocturna / totalExtrasEseDia)) : 
+           valorExtraNocturna;
+         
+         desgloseArray.push({
+           tipo: "Extra nocturna L-S (175%)",
+           horas: formatHorasDecimales(desglose.extNoct / 60),
+           valor: valorAPagarEsteItem
+         });
+       }
+       
+       if (desglose.extDomDia > 0) {
+         const valorAPagarEsteItem = progresoDeDia.tope50PorAlcanzado && totalExtrasEseDia > 0 ? 
+           Math.min(valorExtraFestivoDiurna, valorExtrasAPagar * (valorExtraFestivoDiurna / totalExtrasEseDia)) : 
+           valorExtraFestivoDiurna;
+         
+         desgloseArray.push({
+           tipo: "Extra festivo diurna (225%)",
+           horas: formatHorasDecimales(desglose.extDomDia / 60),
+           valor: valorAPagarEsteItem
+         });
+       }
+       
+       if (desglose.extDomNoct > 0) {
+         const valorAPagarEsteItem = progresoDeDia.tope50PorAlcanzado && totalExtrasEseDia > 0 ? 
+           Math.min(valorExtraFestivoNocturna, valorExtrasAPagar * (valorExtraFestivoNocturna / totalExtrasEseDia)) : 
+           valorExtraFestivoNocturna;
+         
+         desgloseArray.push({
+           tipo: "Extra festivo nocturna (275%)",
+           horas: formatHorasDecimales(desglose.extDomNoct / 60),
+           valor: valorAPagarEsteItem
+         });
+       }
+       
+       return { 
+         total: totalAPagar, 
+         desglose: desgloseArray,
+         horasCompensatorias: horasCompensatorias,
+         valorCompensatorio: valorCompensatorio,
+         esElDiaDelTope: esElDiaDelTope
+       };
+    }
+
+    // Fallback: cálculo básico solo si no hay progreso diario disponible
     const fecha = parse(fechaStr, 'yyyy-MM-dd', new Date());
     const esFestivo = dia.isHoliday || dia.isSunday;
     const [horasStr, minutosStr] = dia.total.split(':');
     const horasTotal = parseInt(horasStr);
     const minutosTotal = parseInt(minutosStr);
-    const totalMinutos = horasTotal * 60 + minutosTotal;
     
-    // Valor de la hora según el salario mensual
+    if (horasTotal === 0 && minutosTotal === 0) {
+      return { 
+        total: 0, 
+        desglose: [],
+        horasCompensatorias: 0,
+        valorCompensatorio: 0,
+        esElDiaDelTope: false
+      };
+    }
+    
     const valorHora = salarioMensual / 190;
-    const valorMinuto = valorHora / 60;
+    const totalHoras = horasTotal + minutosTotal / 60;
     
-    // Contadores para cada tipo de hora
-    let minutosNormales = 0;
-    let minutosNocturnos = 0;
-    let minutosFestivoDiurnos = 0;
-    let minutosFestivoNocturnos = 0;
-    let minutosExtraDiurnos = 0;
-    let minutosExtraNocturnos = 0;
-    let minutosExtraFestivoDiurnos = 0;
-    let minutosExtraFestivoNocturnos = 0;
+    // Cálculo básico simplificado
+    let valorBasico = 0;
+    const desgloseBasico = [];
     
-    // Contador para el total de minutos acumulados en el mes hasta este día
-    // Esto debería ser calculado en una función más global para el mes completo
-    // Por ahora, asumimos que este día está dentro de las 190 horas mensuales
-    // y ajustamos según corresponda
-    
-    // Para calcular correctamente, necesitaríamos saber cuántas horas se han acumulado
-    // en el mes hasta este día. Como esto es complicado de hacer en esta función aislada,
-    // vamos a hacer una aproximación basada en la posición del día en el mes
-    
-    // Obtener el día del mes (1-31)
-    const diaDelMes = parseInt(fechaStr.split('-')[2]);
-    
-    // Calcular un estimado de horas ya trabajadas basado en el día del mes
-    // Esto es una aproximación para la demostración
-    const diasEnMes = getDaysInMonth(fecha);
-    const proporcionDelMes = diaDelMes / diasEnMes;
-    const minutosYaAcumulados = Math.min(Math.floor(proporcionDelMes * 190 * 60), 190 * 60);
-    
-    // Analizar el primer turno
-    if (dia.entrada1 && dia.salida1) {
-      const entrada1 = formatTime24Hour(dia.entrada1);
-      const salida1 = formatTime24Hour(dia.salida1);
-      
-      // Convertir a objetos Date para facilitar los cálculos
-      let horaEntrada = parse(entrada1, 'HH:mm', fecha);
-      let horaSalida = parse(salida1, 'HH:mm', fecha);
-      
-      // Si la salida es antes que la entrada, significa que el turno termina al día siguiente
-      if (entrada1 > salida1) {
-        horaSalida = addDays(horaSalida, 1);
+    if (esFestivo) {
+      valorBasico = totalHoras * valorHora * 2.0;
+      desgloseBasico.push({
+        tipo: "Recargo festivo (estimado)",
+        horas: formatHorasDecimales(totalHoras),
+        valor: valorBasico
+      });
+    } else {
+      const horasEstimadasNocturnas = Math.min(totalHoras * 0.3, totalHoras);
+      if (horasEstimadasNocturnas > 0) {
+        const valorNocturno = horasEstimadasNocturnas * valorHora * 0.35;
+        valorBasico += valorNocturno;
+        desgloseBasico.push({
+          tipo: "Recargo nocturno L-S (35% estimado)",
+          horas: formatHorasDecimales(horasEstimadasNocturnas),
+          valor: valorNocturno
+        });
       }
       
-      // Procesar minuto a minuto para clasificar correctamente
-      let horaActual = new Date(horaEntrada);
-      while (horaActual < horaSalida) {
-        const horaFin = new Date(horaActual);
-        horaFin.setMinutes(horaFin.getMinutes() + 1);
-        
-        const h = horaActual.getHours();
-        const esNocturno = h >= 18 || h < 6; // 6pm a 6am
-        const esDiurno = h >= 6 && h < 18;   // 6am a 6pm
-        
-        // Determinar si este minuto es recargo o extra basado en minutos acumulados
-        const minutosAcumuladosHastaAhora = minutosYaAcumulados + 
-          minutosNormales + minutosNocturnos + minutosFestivoDiurnos + minutosFestivoNocturnos +
-          minutosExtraDiurnos + minutosExtraNocturnos + minutosExtraFestivoDiurnos + minutosExtraFestivoNocturnos;
-        
-        const esExtra = minutosAcumuladosHastaAhora >= 190 * 60;
-        
-        // Clasificar el minuto según tipo
-        if (esExtra) {
-          // Horas extras (después de 190 horas)
-          if (esFestivo) {
-            if (esNocturno) minutosExtraFestivoNocturnos++;
-            else if (esDiurno) minutosExtraFestivoDiurnos++;
-          } else {
-            if (esNocturno) minutosExtraNocturnos++;
-            else if (esDiurno) minutosExtraDiurnos++;
-          }
-        } else {
-          // Recargos (hasta 190 horas)
-          if (esFestivo) {
-            if (esNocturno) minutosFestivoNocturnos++;
-            else if (esDiurno) minutosFestivoDiurnos++;
-          } else {
-            if (esNocturno) minutosNocturnos++;
-            else minutosNormales++;
-          }
-        }
-        
-        horaActual = horaFin;
+      if (totalHoras > 10) {
+        const horasExtrasEstimadas = totalHoras - 10;
+        const valorExtras = horasExtrasEstimadas * valorHora * 1.25;
+        valorBasico += valorExtras;
+        desgloseBasico.push({
+          tipo: "Horas extras (estimado)",
+          horas: formatHorasDecimales(horasExtrasEstimadas),
+          valor: valorExtras
+        });
       }
-    }
-    
-    // Analizar el segundo turno
-    if (dia.entrada2 && dia.salida2) {
-      const entrada2 = formatTime24Hour(dia.entrada2);
-      const salida2 = formatTime24Hour(dia.salida2);
-      
-      // Convertir a objetos Date para facilitar los cálculos
-      let horaEntrada = parse(entrada2, 'HH:mm', fecha);
-      let horaSalida = parse(salida2, 'HH:mm', fecha);
-      
-      // Si la salida es antes que la entrada, significa que el turno termina al día siguiente
-      if (entrada2 > salida2) {
-        horaSalida = addDays(horaSalida, 1);
-      }
-      
-      // Procesar minuto a minuto para clasificar correctamente
-      let horaActual = new Date(horaEntrada);
-      while (horaActual < horaSalida) {
-        const horaFin = new Date(horaActual);
-        horaFin.setMinutes(horaFin.getMinutes() + 1);
-        
-        const h = horaActual.getHours();
-        const esNocturno = h >= 18 || h < 6; // 6pm a 6am
-        const esDiurno = h >= 6 && h < 18;   // 6am a 6pm
-        
-        // Determinar si este minuto es recargo o extra basado en minutos acumulados
-        const minutosAcumuladosHastaAhora = minutosYaAcumulados + 
-          minutosNormales + minutosNocturnos + minutosFestivoDiurnos + minutosFestivoNocturnos +
-          minutosExtraDiurnos + minutosExtraNocturnos + minutosExtraFestivoDiurnos + minutosExtraFestivoNocturnos;
-        
-        const esExtra = minutosAcumuladosHastaAhora >= 190 * 60;
-        
-        // Clasificar el minuto según tipo
-        if (esExtra) {
-          // Horas extras (después de 190 horas)
-          if (esFestivo) {
-            if (esNocturno) minutosExtraFestivoNocturnos++;
-            else if (esDiurno) minutosExtraFestivoDiurnos++;
-          } else {
-            if (esNocturno) minutosExtraNocturnos++;
-            else if (esDiurno) minutosExtraDiurnos++;
-          }
-        } else {
-          // Recargos (hasta 190 horas)
-          if (esFestivo) {
-            if (esNocturno) minutosFestivoNocturnos++;
-            else if (esDiurno) minutosFestivoDiurnos++;
-          } else {
-            if (esNocturno) minutosNocturnos++;
-            else minutosNormales++;
-          }
-        }
-        
-        horaActual = horaFin;
-      }
-    }
-    
-    // Calcular valores monetarios según las fórmulas especificadas
-    const horasNormales = minutosNormales / 60;
-    const horasNocturnas = minutosNocturnos / 60;
-    const horasFestivoDiurnas = minutosFestivoDiurnos / 60;
-    const horasFestivoNocturnas = minutosFestivoNocturnos / 60;
-    const horasExtraDiurnas = minutosExtraDiurnos / 60;
-    const horasExtraNocturnas = minutosExtraNocturnos / 60;
-    const horasExtraFestivoDiurnas = minutosExtraFestivoDiurnos / 60;
-    const horasExtraFestivoNocturnas = minutosExtraFestivoNocturnos / 60;
-    
-    // Calcular valores monetarios según porcentajes
-    const valorHorasNormales = horasNormales * valorHora;
-    const valorHorasNocturnas = horasNocturnas * valorHora * 0.35; // 35% recargo
-    const valorHorasFestivoDiurnas = horasFestivoDiurnas * valorHora * 2.0; // 200% recargo
-    const valorHorasFestivoNocturnas = horasFestivoNocturnas * valorHora * 2.35; // 235% recargo
-    
-    const valorExtrasDiurnas = horasExtraDiurnas * valorHora * 1.25; // 125% recargo
-    const valorExtrasNocturnas = horasExtraNocturnas * valorHora * 1.75; // 175% recargo
-    const valorExtrasFestivoDiurnas = horasExtraFestivoDiurnas * valorHora * 2.25; // 225% recargo
-    const valorExtrasFestivoNocturnas = horasExtraFestivoNocturnas * valorHora * 2.75; // 275% recargo
-    
-    // Calcular total de extras
-    const totalExtras = valorExtrasDiurnas + valorExtrasNocturnas + valorExtrasFestivoDiurnas + valorExtrasFestivoNocturnas;
-    
-    // Verificar el tope del 50% del salario
-    const topeMaximo = salarioMensual * 0.5;
-    let valorExtrasAPagar = totalExtras;
-    let valorCompensatorio = 0;
-    let horasCompensatorias = 0;
-    
-    if (totalExtras > topeMaximo) {
-      valorExtrasAPagar = topeMaximo;
-      valorCompensatorio = totalExtras - topeMaximo;
-      
-      // Convertir el valor compensatorio a horas
-      horasCompensatorias = valorCompensatorio / valorHora;
-    }
-    
-    // Calcular total a pagar (solo recargos + extras dentro del tope, sin horas normales)
-    const totalAPagar = valorHorasNocturnas + valorHorasFestivoDiurnas + 
-                       valorHorasFestivoNocturnas + valorExtrasAPagar;
-    
-    // Crear desglose para el tooltip - solo mostrar recargos y extras (sin horas normales)
-    const desglose = [];
-    
-    // Agregar solo recargos al desglose (sin horas normales)
-    if (horasNocturnas > 0) {
-      desglose.push({
-        tipo: "Recargo nocturno L-S (35%)",
-        horas: formatHorasDecimales(horasNocturnas),
-        valor: valorHorasNocturnas
-      });
-    }
-    
-    if (horasFestivoDiurnas > 0) {
-      desglose.push({
-        tipo: "Recargo festivo diurno (200%)",
-        horas: formatHorasDecimales(horasFestivoDiurnas),
-        valor: valorHorasFestivoDiurnas
-      });
-    }
-    
-    if (horasFestivoNocturnas > 0) {
-      desglose.push({
-        tipo: "Recargo festivo nocturno (235%)",
-        horas: formatHorasDecimales(horasFestivoNocturnas),
-        valor: valorHorasFestivoNocturnas
-      });
-    }
-    
-    // Agregar extras al desglose
-    if (horasExtraDiurnas > 0) {
-      desglose.push({
-        tipo: "Extra diurna L-S (125%)",
-        horas: formatHorasDecimales(horasExtraDiurnas),
-        valor: Math.min(valorExtrasDiurnas, valorExtrasAPagar)
-      });
-    }
-    
-    if (horasExtraNocturnas > 0) {
-      desglose.push({
-        tipo: "Extra nocturna L-S (175%)",
-        horas: formatHorasDecimales(horasExtraNocturnas),
-        valor: Math.min(valorExtrasNocturnas, valorExtrasAPagar)
-      });
-    }
-    
-    if (horasExtraFestivoDiurnas > 0) {
-      desglose.push({
-        tipo: "Extra festivo diurna (225%)",
-        horas: formatHorasDecimales(horasExtraFestivoDiurnas),
-        valor: Math.min(valorExtrasFestivoDiurnas, valorExtrasAPagar)
-      });
-    }
-    
-    if (horasExtraFestivoNocturnas > 0) {
-      desglose.push({
-        tipo: "Extra festivo nocturna (275%)",
-        horas: formatHorasDecimales(horasExtraFestivoNocturnas),
-        valor: Math.min(valorExtrasFestivoNocturnas, valorExtrasAPagar)
-      });
     }
     
     return { 
-      total: totalAPagar, 
-      desglose: desglose,
-      horasCompensatorias: horasCompensatorias,
-      valorCompensatorio: valorCompensatorio
+      total: valorBasico, 
+      desglose: desgloseBasico,
+      horasCompensatorias: 0,
+      valorCompensatorio: 0,
+      esElDiaDelTope: false
     };
   };
   
@@ -2217,6 +2271,219 @@ export default function ControlHorasExtras() {
       setErrorFestivo(err.message || 'Error al eliminar el festivo');
     }
   };
+
+  // Función auxiliar para calcular progreso diario automáticamente
+  const calcularProgresoDiarioAutomatico = useCallback(() => {
+    // Verificar si hay datos válidos para calcular
+    const hayDatosValidos = Object.values(diasMes).some(dia => 
+      dia.total && dia.total !== "0:00" && dia.total !== "Error"
+    );
+    
+    if (!hayDatosValidos) {
+      setProgresoDiario({});
+      return;
+    }
+
+    // Usar la misma lógica que calcularHorasYRecargos pero solo para el progreso diario
+    let totalMinutos = 0
+    let recNocturno = 0
+    let recDomNoct = 0  
+    let recDomDia = 0   
+    let extDia = 0      
+    let extNoct = 0     
+    let extDomDia = 0   
+    let extDomNoct = 0  
+    let topeAlcanzado = false
+    const valorHora = salarioMensual / 190
+    const valorMinuto = valorHora / 60
+    const topeMaximo = salarioMensual * 0.5
+    let dineroExtrasAcumulado = 0
+    let minutosCompensar = 0
+
+    type TipoHoraExtra = 'diurnaLV' | 'nocturnaLV' | 'diurnaFestivo' | 'nocturnaFestivo';
+    let minutosExtraPorTipo: Record<TipoHoraExtra, number> = {
+      'diurnaLV': 0,
+      'nocturnaLV': 0,
+      'diurnaFestivo': 0,
+      'nocturnaFestivo': 0
+    };
+    let minutosCompensatoriosPorTipo: Record<TipoHoraExtra, number> = {
+      'diurnaLV': 0,
+      'nocturnaLV': 0,
+      'diurnaFestivo': 0,
+      'nocturnaFestivo': 0
+    };
+    
+    let progresoTemporalDiario: {[key: string]: {
+      minutosAcumuladosHastaEseDia: number,
+      minutosExtrasAcumuladosHasta: number,
+      valorExtrasAcumuladoHasta: number,
+      topeHorasAlcanzado: boolean,
+      tope50PorAlcanzado: boolean,
+      desgloseDia: {
+        recNocturno: number,
+        recDomNoct: number, 
+        recDomDia: number,
+        extDia: number,
+        extNoct: number,
+        extDomDia: number,
+        extDomNoct: number
+      }
+    }} = {}
+    
+    const fechasOrdenadas = Object.keys(diasMes).sort()
+    
+    fechasOrdenadas.forEach((fecha) => {
+      const dia = diasMes[fecha]
+      if (dia.total === "Error") return
+      
+      const fechaDate = parse(fecha, "yyyy-MM-dd", new Date())
+      const esFestivo = dia.isHoliday || dia.isSunday;
+      
+      let recNocturnoEseDia = 0
+      let recDomNoctEseDia = 0
+      let recDomDiaEseDia = 0
+      let extDiaEseDia = 0
+      let extNoctEseDia = 0
+      let extDomDiaEseDia = 0
+      let extDomNoctEseDia = 0
+      
+      const turnos = [
+        { entrada: dia.entrada1, salida: dia.salida1 },
+        { entrada: dia.entrada2, salida: dia.salida2 },
+      ]
+      
+      turnos.forEach(({ entrada, salida }) => {
+        if (!entrada || !salida) return
+        let horaEntrada = parse(entrada, "HH:mm", fechaDate)
+        let horaSalida = parse(salida, "HH:mm", fechaDate)
+        if (horaSalida < horaEntrada) horaSalida = addDays(horaSalida, 1)
+        let horaActual = new Date(horaEntrada)
+        
+        while (horaActual < horaSalida) {
+          const horaFin = new Date(horaActual)
+          horaFin.setMinutes(horaFin.getMinutes() + 1)
+          const h = horaActual.getHours()
+          const esNocturno = h >= 18 || h < 6
+          const esDiurno = h >= 6 && h < 18
+          totalMinutos++
+
+          if (totalMinutos <= 190 * 60) {
+            if (!esFestivo && esNocturno) {
+              recNocturno++
+              recNocturnoEseDia++
+            }
+            if (esFestivo && esNocturno) {
+              recDomNoct++
+              recDomNoctEseDia++
+            }
+            if (esFestivo && esDiurno) {
+              recDomDia++
+              recDomDiaEseDia++
+            }
+          } else {
+            let valorEsteMinuto = 0
+            let tipoHoraActual: TipoHoraExtra | undefined = undefined;
+            
+            if (!esFestivo && esDiurno) { 
+              if (!topeAlcanzado) {
+                extDia++
+                extDiaEseDia++
+              }
+              valorEsteMinuto = valorMinuto * 1.25;
+              tipoHoraActual = 'diurnaLV';
+              if (!topeAlcanzado) minutosExtraPorTipo['diurnaLV']++;
+            }
+            else if (!esFestivo && esNocturno) { 
+              if (!topeAlcanzado) {
+                extNoct++
+                extNoctEseDia++
+              }
+              valorEsteMinuto = valorMinuto * 1.75;
+              tipoHoraActual = 'nocturnaLV';
+              if (!topeAlcanzado) minutosExtraPorTipo['nocturnaLV']++;
+            }
+            else if (esFestivo && esDiurno) { 
+              if (!topeAlcanzado) {
+                extDomDia++
+                extDomDiaEseDia++
+              }
+              valorEsteMinuto = valorMinuto * 2.25;
+              tipoHoraActual = 'diurnaFestivo';
+              if (!topeAlcanzado) minutosExtraPorTipo['diurnaFestivo']++;
+            }
+            else if (esFestivo && esNocturno) { 
+              if (!topeAlcanzado) {
+                extDomNoct++
+                extDomNoctEseDia++
+              }
+              valorEsteMinuto = valorMinuto * 2.75;
+              tipoHoraActual = 'nocturnaFestivo';
+              if (!topeAlcanzado) minutosExtraPorTipo['nocturnaFestivo']++;
+            }
+            
+                         if (dineroExtrasAcumulado < topeMaximo) {
+               if (dineroExtrasAcumulado + valorEsteMinuto > topeMaximo && !topeAlcanzado) {
+                 topeAlcanzado = true
+                 const fraccionDentroDelTope = (topeMaximo - dineroExtrasAcumulado) / valorEsteMinuto
+                 dineroExtrasAcumulado = topeMaximo
+                
+                if (tipoHoraActual) {
+                  if (tipoHoraActual === 'diurnaLV') {
+                    extDia = extDia - 1 + fraccionDentroDelTope;
+                    minutosExtraPorTipo['diurnaLV'] = minutosExtraPorTipo['diurnaLV'] - 1 + fraccionDentroDelTope;
+                  } else if (tipoHoraActual === 'nocturnaLV') {
+                    extNoct = extNoct - 1 + fraccionDentroDelTope;
+                    minutosExtraPorTipo['nocturnaLV'] = minutosExtraPorTipo['nocturnaLV'] - 1 + fraccionDentroDelTope;
+                  } else if (tipoHoraActual === 'diurnaFestivo') {
+                    extDomDia = extDomDia - 1 + fraccionDentroDelTope;
+                    minutosExtraPorTipo['diurnaFestivo'] = minutosExtraPorTipo['diurnaFestivo'] - 1 + fraccionDentroDelTope;
+                  } else if (tipoHoraActual === 'nocturnaFestivo') {
+                    extDomNoct = extDomNoct - 1 + fraccionDentroDelTope;
+                    minutosExtraPorTipo['nocturnaFestivo'] = minutosExtraPorTipo['nocturnaFestivo'] - 1 + fraccionDentroDelTope;
+                  }
+                  minutosCompensatoriosPorTipo[tipoHoraActual] += (1 - fraccionDentroDelTope)
+                  minutosCompensar += (1 - fraccionDentroDelTope)
+                }
+              } else {
+                dineroExtrasAcumulado += valorEsteMinuto
+              }
+            } else {
+              minutosCompensar++
+              if (tipoHoraActual) {
+                minutosCompensatoriosPorTipo[tipoHoraActual]++;
+              }
+            }
+          }
+          horaActual = horaFin
+        }
+      })
+      
+      progresoTemporalDiario[fecha] = {
+        minutosAcumuladosHastaEseDia: totalMinutos,
+        minutosExtrasAcumuladosHasta: Math.max(0, totalMinutos - 190 * 60),
+        valorExtrasAcumuladoHasta: dineroExtrasAcumulado,
+        topeHorasAlcanzado: totalMinutos >= 190 * 60,
+        tope50PorAlcanzado: topeAlcanzado,
+        desgloseDia: {
+          recNocturno: recNocturnoEseDia,
+          recDomNoct: recDomNoctEseDia,
+          recDomDia: recDomDiaEseDia,
+          extDia: extDiaEseDia,
+          extNoct: extNoctEseDia,
+          extDomDia: extDomDiaEseDia,
+          extDomNoct: extDomNoctEseDia
+        }
+      }
+    })
+
+         setProgresoDiario(progresoTemporalDiario)
+   }, [diasMes, salarioMensual])
+
+  // Efecto para calcular automáticamente el progreso diario
+  useEffect(() => {
+    calcularProgresoDiarioAutomatico()
+  }, [calcularProgresoDiarioAutomatico])
 
   return (
     <div className="w-full py-8 flex flex-col gap-8">
@@ -2653,18 +2920,25 @@ export default function ControlHorasExtras() {
                               ))}
                               
                               {/* Mostrar horas compensatorias si existen */}
-                              {calcularValorMonetarioDia(fechaStr, dia).horasCompensatorias > 0 && (
+                              {(() => {
+                                const resultado = calcularValorMonetarioDia(fechaStr, dia);
+                                return resultado.horasCompensatorias > 0 || resultado.esElDiaDelTope;
+                              })() && (
                                 <div className="mt-2 pt-1 border-t border-gray-200">
-                                  <div className="flex justify-between items-center text-xs gap-3 min-w-0">
-                                    <span className="text-amber-600 font-medium whitespace-nowrap">Horas compensatorias</span>
-                                    <span className="text-amber-600 font-medium whitespace-nowrap flex-shrink-0">
-                                      {formatHorasDecimales(calcularValorMonetarioDia(fechaStr, dia).horasCompensatorias)}h
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between items-center text-xs gap-3 min-w-0">
-                                    <span className="text-amber-600 whitespace-nowrap">Valor compensatorio</span>
-                                    <span className="text-amber-600 whitespace-nowrap flex-shrink-0">${formatNumberWithSpace(calcularValorMonetarioDia(fechaStr, dia).valorCompensatorio)}</span>
-                                  </div>
+                                  
+      
+                                  {/* Mensaje cuando es el día del tope */}
+                                  {(() => {
+                                    const resultado = calcularValorMonetarioDia(fechaStr, dia);
+                                    return resultado.esElDiaDelTope;
+                                  })() && (
+                                    <div className="text-xs text-red-600 italic mt-1">
+                                       A partir de este momento todas las horas horas trabajadas se convierten en tiempo compensatorio, Ir a calculo y reportes para mas detalles
+                                  
+                                    </div>
+                                    
+                                    
+                                  )}
                                 </div>
                               )}
                             </div>
