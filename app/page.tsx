@@ -2899,14 +2899,15 @@ export default function ControlHorasExtras() {
                         <div>
                           {dia.total || "0:00"}
                         </div>
-                        {dia.total && dia.total !== "0:00" && (
+                        {/* TOTAL MONETARIO OCULTO - Para volver a mostrar, cambia 'false' por 'true' en la siguiente línea */}
+                        {false && dia.total && dia.total !== "0:00" && (
                           <div className="text-xs font-normal text-green-600">
                             ${formatNumberWithSpace(calcularValorMonetarioDia(fechaStr, dia).total)}
                           </div>
                         )}
                         
-                        {/* Tooltip con desglose - solo mostrar si hay recargos o extras */}
-                        {dia.total && dia.total !== "0:00" && dia.total !== "Error" && calcularValorMonetarioDia(fechaStr, dia).desglose.length > 0 && (
+                        {/* TOOLTIP CON DESGLOSE OCULTO - Para volver a mostrar, cambia 'false' por 'true' en la siguiente línea */}
+                        {false && dia.total && dia.total !== "0:00" && dia.total !== "Error" && calcularValorMonetarioDia(fechaStr, dia).desglose.length > 0 && (
                           <div className="absolute z-50 invisible group-hover:visible bg-white border border-gray-200 shadow-lg rounded-md p-3 w-96 -left-40 top-full mt-1">
                             <div className="text-left text-sm font-medium text-gray-700 mb-2">
                               Desglose de horas:
