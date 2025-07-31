@@ -41,7 +41,7 @@ export default function RootLayout({
                   />
                   <div className="flex flex-col items-center sm:items-start">
                     <span className="text-sm sm:text-lg font-bold text-gray-800 text-center sm:text-left leading-tight">
-                      Cálculo de recargos y Horas Extras
+                      Simulador de Recargos y Horas Extras
                     </span>
                   </div>
                 </div>
@@ -61,7 +61,7 @@ export default function RootLayout({
           <footer className="bg-gray-200 text-center py-4 mt-8 text-gray-600 text-xs sm:text-sm w-full">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <p className="break-words">
-                © 2025 U.A.E CUERPO OFICIAL DE BOMBEROS BOGOTA D.C. - Cálculo recargos y Horas Extras
+                © 2025 U.A.E CUERPO OFICIAL DE BOMBEROS BOGOTA D.C. - Simulador de Recargos y Horas Extras
               </p>
             </div>
           </footer>

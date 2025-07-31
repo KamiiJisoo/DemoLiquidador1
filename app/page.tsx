@@ -53,12 +53,6 @@ interface DiaData {
   isSunday: boolean
 }
 
-interface AdvertenciaDiaDiferente {
-  fecha: string
-  turno: "1" | "2"
-  entrada: string
-  salida: string
-}
 
 // Interfaz para los cálculos de horas
 interface CalculoHoras {
@@ -541,7 +535,7 @@ export default function ControlHorasExtras() {
   const [errorValidacion, setErrorValidacion] = useState<string>("")
   const [camposConError, setCamposConError] = useState<{[key: string]: string[]}>({})
   const [hasErrorsInCurrentWeek, setHasErrorsInCurrentWeek] = useState(false)
-  const [advertenciasDiaDiferente, setAdvertenciasDiaDiferente] = useState<AdvertenciaDiaDiferente[]>([]);
+
   
   // Variables para la gestión de cargos
   const [editandoCargo, setEditandoCargo] = useState<string | null>(null);
@@ -881,38 +875,40 @@ export default function ControlHorasExtras() {
     
     // Calcular total de horas para el día
     if (
-      nuevosDias[fecha].entrada1 &&
-      nuevosDias[fecha].salida1
+      (nuevosDias[fecha].entrada1 && nuevosDias[fecha].salida1) ||
+      (nuevosDias[fecha].entrada2 && nuevosDias[fecha].salida2)
     ) {
       try {
         let totalMinutos = 0
         
-        // Calcular minutos del primer turno
-        const entrada1 = formatTime24Hour(nuevosDias[fecha].entrada1)
-        const salida1 = formatTime24Hour(nuevosDias[fecha].salida1)
-        
-        // Verificar si la entrada es mayor que la salida (turno nocturno)
-        if (entrada1 <= salida1) {
-          // Turno normal (mismo día)
-          const horasEntrada1 = parseInt(entrada1.split(':')[0])
-          const minutosEntrada1 = parseInt(entrada1.split(':')[1])
-          const horasSalida1 = parseInt(salida1.split(':')[0])
-          const minutosSalida1 = parseInt(salida1.split(':')[1])
+        // Calcular minutos del primer turno si existe
+        if (nuevosDias[fecha].entrada1 && nuevosDias[fecha].salida1) {
+          const entrada1 = formatTime24Hour(nuevosDias[fecha].entrada1)
+          const salida1 = formatTime24Hour(nuevosDias[fecha].salida1)
           
-          const minutosTotales1 = (horasSalida1 * 60 + minutosSalida1) - (horasEntrada1 * 60 + minutosEntrada1)
-          totalMinutos += minutosTotales1
-        } else {
-          // Turno nocturno (pasa al día siguiente)
-          const horasEntrada1 = parseInt(entrada1.split(':')[0])
-          const minutosEntrada1 = parseInt(entrada1.split(':')[1])
-          const horasSalida1 = parseInt(salida1.split(':')[0]) + 24 // Añadir 24 horas
-          const minutosSalida1 = parseInt(salida1.split(':')[1])
-          
-          const minutosTotales1 = (horasSalida1 * 60 + minutosSalida1) - (horasEntrada1 * 60 + minutosEntrada1)
-          totalMinutos += minutosTotales1
+          // Verificar si la entrada es mayor que la salida (turno nocturno)
+          if (entrada1 <= salida1) {
+            // Turno normal (mismo día)
+            const horasEntrada1 = parseInt(entrada1.split(':')[0])
+            const minutosEntrada1 = parseInt(entrada1.split(':')[1])
+            const horasSalida1 = parseInt(salida1.split(':')[0])
+            const minutosSalida1 = parseInt(salida1.split(':')[1])
+            
+            const minutosTotales1 = (horasSalida1 * 60 + minutosSalida1) - (horasEntrada1 * 60 + minutosEntrada1)
+            totalMinutos += minutosTotales1
+          } else {
+            // Turno nocturno (pasa al día siguiente)
+            const horasEntrada1 = parseInt(entrada1.split(':')[0])
+            const minutosEntrada1 = parseInt(entrada1.split(':')[1])
+            const horasSalida1 = parseInt(salida1.split(':')[0]) + 24 // Añadir 24 horas
+            const minutosSalida1 = parseInt(salida1.split(':')[1])
+            
+            const minutosTotales1 = (horasSalida1 * 60 + minutosSalida1) - (horasEntrada1 * 60 + minutosEntrada1)
+            totalMinutos += minutosTotales1
+          }
         }
         
-        // Si hay segundo turno, calcular minutos
+        // Calcular minutos del segundo turno si existe
         if (nuevosDias[fecha].entrada2 && nuevosDias[fecha].salida2) {
           const entrada2 = formatTime24Hour(nuevosDias[fecha].entrada2)
           const salida2 = formatTime24Hour(nuevosDias[fecha].salida2)
@@ -955,8 +951,7 @@ export default function ControlHorasExtras() {
     // Actualizar el estado
     setDiasMes(nuevosDias)
     
-    // Verificar advertencias de día diferente
-    verificarAdvertenciasDiaDiferente(fecha, nuevosDias[fecha])
+
   }
 
   // Manejar cambio de fecha
@@ -1525,8 +1520,7 @@ export default function ControlHorasExtras() {
       // Actualizar estado
       setDiasMes(nuevosDias)
       
-      // Verificar advertencias para el día siguiente
-      verificarAdvertenciasDiaDiferente(fechaSiguiente, nuevosDias[fechaSiguiente])
+
     }
   }
 
@@ -1566,8 +1560,7 @@ export default function ControlHorasExtras() {
           isSunday: nuevosDias[fechaDestino]?.isSunday || false
         }
         
-        // Verificar advertencias para cada día copiado
-        verificarAdvertenciasDiaDiferente(fechaDestino, nuevosDias[fechaDestino])
+
       }
     }
     
@@ -1605,8 +1598,7 @@ export default function ControlHorasExtras() {
         isSunday: nuevosDias[fechaDestino]?.isSunday || false
       }
       
-      // Verificar advertencias para cada día copiado
-      verificarAdvertenciasDiaDiferente(fechaDestino, nuevosDias[fechaDestino])
+
       
       diaIterador = addDays(diaIterador, 1)
     }
@@ -1615,47 +1607,7 @@ export default function ControlHorasExtras() {
     setDiasMes(nuevosDias)
   }
 
-  // Función para verificar advertencias de día diferente
-  const verificarAdvertenciasDiaDiferente = (fechaStr: string, dia: DiaData) => {
-    // Eliminar advertencias existentes para esta fecha
-    const nuevasAdvertencias = [...advertenciasDiaDiferente.filter(adv => adv.fecha !== fechaStr)]
-    
-    // Verificar turno 1
-    if (dia.entrada1 && dia.salida1) {
-      const entrada1 = formatTime24Hour(dia.entrada1)
-      const salida1 = formatTime24Hour(dia.salida1)
-      
-      if (entrada1 > salida1) {
-        nuevasAdvertencias.push({
-          fecha: fechaStr,
-          turno: "1",
-          entrada: entrada1,
-          salida: salida1
-        })
-      }
-    }
-    
-    // Verificar turno 2
-    if (dia.entrada2 && dia.salida2) {
-      const entrada2 = formatTime24Hour(dia.entrada2)
-      const salida2 = formatTime24Hour(dia.salida2)
-      
-      if (entrada2 > salida2) {
-        nuevasAdvertencias.push({
-          fecha: fechaStr,
-          turno: "2",
-          entrada: entrada2,
-          salida: salida2
-        })
-      }
-    }
-    
-    // Actualizar el estado con todas las advertencias
-    setAdvertenciasDiaDiferente(nuevasAdvertencias)
-    
-    // Retornar las nuevas advertencias para esta fecha específica
-    return nuevasAdvertencias.filter(adv => adv.fecha === fechaStr)
-  }
+
 
   // Función para generar hash de la contraseña
   const generateHash = (text: string) => {
@@ -1814,46 +1766,14 @@ export default function ControlHorasExtras() {
     }
   }, [semanaActual, camposConError, diasSemanaActual, hasErrorsInCurrentWeek])
 
-  // Efecto para verificar advertencias cuando cambia el estado de diasMes
+  // Efecto para verificar advertencias de solapamiento cuando cambia el estado de diasMes
   useEffect(() => {
-    // Crear un array para almacenar todas las advertencias
-    const todasLasAdvertencias: AdvertenciaDiaDiferente[] = []
     // Crear un objeto para almacenar los campos con error
     const nuevosCamposConError: {[key: string]: string[]} = {}
 
     // Verificar cada día del mes
     Object.entries(diasMes).forEach(([fechaStr, dia]) => {
       const erroresFecha: string[] = []
-      
-      // Verificar turno 1
-      if (dia.entrada1 && dia.salida1) {
-        const entrada1 = formatTime24Hour(dia.entrada1)
-        const salida1 = formatTime24Hour(dia.salida1)
-        
-        if (entrada1 > salida1) {
-          todasLasAdvertencias.push({
-            fecha: fechaStr,
-            turno: "1",
-            entrada: entrada1,
-            salida: salida1
-          })
-        }
-      }
-      
-      // Verificar turno 2
-      if (dia.entrada2 && dia.salida2) {
-        const entrada2 = formatTime24Hour(dia.entrada2)
-        const salida2 = formatTime24Hour(dia.salida2)
-        
-        if (entrada2 > salida2) {
-          todasLasAdvertencias.push({
-            fecha: fechaStr,
-            turno: "2",
-            entrada: entrada2,
-            salida: salida2
-          })
-        }
-      }
       
       // Verificar solapamiento entre turnos
       if (dia.entrada1 && dia.salida1 && dia.entrada2 && dia.salida2) {
@@ -1896,8 +1816,6 @@ export default function ControlHorasExtras() {
       }
     })
     
-    // Actualizar el estado con todas las advertencias
-    setAdvertenciasDiaDiferente(todasLasAdvertencias)
     // Actualizar el estado de los campos con error
     setCamposConError(nuevosCamposConError)
   }, [diasMes])
@@ -1983,9 +1901,8 @@ export default function ControlHorasExtras() {
         }
       }
        
-       // Calcular total a pagar (solo recargos + extras dentro del tope)
-       const totalAPagar = valorRecargoNocturno + valorRecargoFestivoNocturno + 
-                          valorRecargoFestivoDiurno + valorExtrasAPagar;
+       // Calcular total a pagar (solo extras dentro del tope, sin recargos)
+       const totalAPagar = valorExtrasAPagar;
        
        // Crear desglose para el tooltip
        const desgloseArray = [];
@@ -2606,28 +2523,7 @@ export default function ControlHorasExtras() {
             </button>
           </section>
 
-          {/* Advertencias de días diferentes */}
-          {advertenciasDiaDiferente.length > 0 && (
-            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <h3 className="text-lg font-semibold text-yellow-800 mb-2 flex items-center gap-2">
-                <AlertCircle className="w-5 h-5" />
-                Advertencias de días diferentes
-              </h3>
-              <div className="space-y-2">
-                {advertenciasDiaDiferente.map((advertencia, index) => (
-                  <div key={index} className="text-yellow-700">
-                    <p>
-                      <span className="font-medium">
-                        {format(parseISO(advertencia.fecha), 'dd/MM/yyyy')} - Turno {advertencia.turno}:
-                      </span>
-                      {" "}Se ha detectado que la hora de entrada ({advertencia.entrada}) es mayor que la hora de salida ({advertencia.salida}), 
-                      lo que indica que el turno se extiende hasta el día siguiente. Si esto es correcto, puede ignorar esta advertencia.
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+
           
           {/* Advertencias de solapamiento de horarios */}
           {Object.keys(camposConError).length > 0 && (
@@ -2842,10 +2738,10 @@ export default function ControlHorasExtras() {
                             <button
                               type="button"
                               onClick={() => copiarAlDiaSiguiente(fechaStr)}
-                              disabled={!dia.entrada1 || !dia.salida1 || idx === diasSemanaActual.length - 1}
+                              disabled={((!dia.entrada1 || !dia.salida1) && (!dia.entrada2 || !dia.salida2)) || idx === diasSemanaActual.length - 1}
                               className={cn(
                                 "p-0.5 rounded-md text-xs font-medium transition-colors flex flex-col items-center",
-                                (dia.entrada1 && dia.salida1 && idx !== diasSemanaActual.length - 1) 
+                                ((dia.entrada1 && dia.salida1) || (dia.entrada2 && dia.salida2)) && idx !== diasSemanaActual.length - 1
                                   ? "bg-blue-100 hover:bg-blue-200 text-blue-700" 
                                   : "bg-gray-100 text-gray-400 cursor-not-allowed"
                               )}
@@ -2859,10 +2755,10 @@ export default function ControlHorasExtras() {
                             <button
                               type="button"
                               onClick={() => copiarAlRestoSemana(fechaStr)}
-                              disabled={!dia.entrada1 || !dia.salida1 || idx === diasSemanaActual.length - 1}
+                              disabled={((!dia.entrada1 || !dia.salida1) && (!dia.entrada2 || !dia.salida2)) || idx === diasSemanaActual.length - 1}
                               className={cn(
                                 "p-0.5 rounded-md text-xs font-medium transition-colors flex flex-col items-center",
-                                (dia.entrada1 && dia.salida1 && idx !== diasSemanaActual.length - 1) 
+                                ((dia.entrada1 && dia.salida1) || (dia.entrada2 && dia.salida2)) && idx !== diasSemanaActual.length - 1
                                   ? "bg-green-100 hover:bg-green-200 text-green-700" 
                                   : "bg-gray-100 text-gray-400 cursor-not-allowed"
                               )}
@@ -2876,10 +2772,10 @@ export default function ControlHorasExtras() {
                             <button
                               type="button"
                               onClick={() => copiarAlRestoMes(fechaStr)}
-                              disabled={!dia.entrada1 || !dia.salida1}
+                              disabled={(!dia.entrada1 || !dia.salida1) && (!dia.entrada2 || !dia.salida2)}
                               className={cn(
                                 "p-0.5 rounded-md text-xs font-medium transition-colors flex flex-col items-center",
-                                (dia.entrada1 && dia.salida1) 
+                                ((dia.entrada1 && dia.salida1) || (dia.entrada2 && dia.salida2))
                                   ? "bg-purple-100 hover:bg-purple-200 text-purple-700" 
                                   : "bg-gray-100 text-gray-400 cursor-not-allowed"
                               )}
@@ -2899,8 +2795,8 @@ export default function ControlHorasExtras() {
                         <div>
                           {dia.total || "0:00"}
                         </div>
-                        {/* TOTAL MONETARIO OCULTO - Para volver a mostrar, cambia 'false' por 'true' en la siguiente línea */}
-                        {false && dia.total && dia.total !== "0:00" && (
+                        {/* TOTAL MONETARIO - Solo se muestra cuando se han superado las 190 horas (horas extras) y el total es mayor que 0 */}
+                        {progresoDiario[fechaStr]?.topeHorasAlcanzado && dia.total && dia.total !== "0:00" && calcularValorMonetarioDia(fechaStr, dia).total > 0 && (
                           <div className="text-xs font-normal text-green-600">
                             ${formatNumberWithSpace(calcularValorMonetarioDia(fechaStr, dia).total)}
                           </div>
