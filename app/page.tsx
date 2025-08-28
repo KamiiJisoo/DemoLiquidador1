@@ -518,6 +518,7 @@ export default function ControlHorasExtras() {
   const [semanaActual, setSemanaActual] = useState(0)
   const [mostrarModalCargos, setMostrarModalCargos] = useState(false)
   const [mostrarModalAuth, setMostrarModalAuth] = useState(false)
+  const [mostrarModalAyuda, setMostrarModalAyuda] = useState(false)
   const [cargosState, setCargosState] = useState<{ id: number; nombre: string; salario: number }[]>([])
   const [accessLogs, setAccessLogs] = useState<Array<{ id: number; ip: string; fecha: string }>>([]);
   const [editando, setEditando] = useState<string | null>(null)
@@ -2407,34 +2408,71 @@ export default function ControlHorasExtras() {
       {/* Modal de autenticación */}
       {mostrarModalAuth && <ModalAuth />}
       
+      {/* Modal de ayuda - Manual de Usuario */}
+      {mostrarModalAyuda && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-6xl h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-xl font-bold text-gray-800">Manual de Usuario</h2>
+              <button
+                onClick={() => setMostrarModalAyuda(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
+              >
+                ×
+              </button>
+            </div>
+            <div className="flex-1 p-4">
+              <iframe
+                src="/Manual de usuario SIMULADOR.pdf"
+                className="w-full h-full border-0"
+                title="Manual de Usuario"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Navegación de pestañas */}
-      <div className="bg-gray-100 rounded-xl p-2 flex flex-col sm:flex-row mb-6 gap-2 sm:gap-0">
-        <button
-          className={`px-4 sm:px-8 py-2 rounded-md font-bold transition-colors text-sm sm:text-base ${tab === 'registro' ? 'bg-white text-black shadow' : 'text-gray-500'}`}
-          onClick={() => setTab('registro')}
-        >
-          Registro de Horas
-        </button>
-        <button
-          className={`px-4 sm:px-8 py-2 rounded-md font-bold transition-colors text-sm sm:text-base ${tab === 'calculos' ? 'bg-white text-black shadow' : 'text-gray-500'}`}
-          onClick={() => setTab('calculos')}
-        >
-          Cálculos y Reportes
-        </button>
-        <button
-          className={`px-4 sm:px-8 py-2 rounded-md font-bold transition-colors text-sm sm:text-base ${tab === 'gestion-cargos' ? 'bg-white text-black shadow' : 'text-gray-500'}`}
-          onClick={() => {
-            if (!autenticadoGestionCargos) {
-              setMostrarModalAuth(true);
-              setPassword("");
-              setErrorAuth("");
-            } else {
-              setTab('gestion-cargos');
-            }
-          }}
-        >
-          Administración
-        </button>
+      <div className="bg-gray-100 rounded-xl p-2 flex flex-col sm:flex-row mb-6 gap-2 sm:gap-0 sm:justify-between">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-0">
+          <button
+            className={`px-4 sm:px-8 py-2 rounded-md font-bold transition-colors text-sm sm:text-base ${tab === 'registro' ? 'bg-white text-black shadow' : 'text-gray-500'}`}
+            onClick={() => setTab('registro')}
+          >
+            Registro de Horas
+          </button>
+          <button
+            className={`px-4 sm:px-8 py-2 rounded-md font-bold transition-colors text-sm sm:text-base ${tab === 'calculos' ? 'bg-white text-black shadow' : 'text-gray-500'}`}
+            onClick={() => setTab('calculos')}
+          >
+            Cálculos y Reportes
+          </button>
+          <button
+            className={`px-4 sm:px-8 py-2 rounded-md font-bold transition-colors text-sm sm:text-base ${tab === 'gestion-cargos' ? 'bg-white text-black shadow' : 'text-gray-500'}`}
+            onClick={() => {
+              if (!autenticadoGestionCargos) {
+                setMostrarModalAuth(true);
+                setPassword("");
+                setErrorAuth("");
+              } else {
+                setTab('gestion-cargos');
+              }
+            }}
+          >
+            Administración
+          </button>
+        </div>
+        
+        {/* Botón de ayuda */}
+        <div className="flex items-center">
+          <button
+            className="w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full font-bold transition-colors flex items-center justify-center text-sm"
+            onClick={() => setMostrarModalAyuda(true)}
+            title="Manual de Usuario"
+          >
+            ?
+          </button>
+        </div>
       </div>
       {/* Registro de Horas */}
       {tab === 'registro' && (

@@ -31,23 +31,34 @@ export default function RootLayout({
         >
           {/* Header fijo - Ahora cubre completamente el ancho */}
           <header className="bg-[var(--primary)] text-white py-4 shadow-md sticky top-0 z-50 w-full">
-            <div className="w-full max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 lg:px-8">
-              <div className="flex items-center gap-3 min-w-0 flex-1">
-                <div className="flex flex-col sm:flex-row items-center bg-white rounded-lg px-3 py-2 shadow-sm">
+            <div className="w-full max-w-7xl mx-auto flex items-center justify-center px-4 sm:px-6 lg:px-8">
+              {/* Contenedor blanco que incluye todos los elementos */}
+              <div className="flex flex-col sm:flex-row items-center justify-between bg-white rounded-lg px-4 py-3 shadow-sm w-full max-w-5xl">
+                
+                {/* Logo App Liquidador - Izquierda */}
+                <div className="flex items-center mb-2 sm:mb-0">
+                  <img 
+                    src="/Logo App Liquidador.jpg" 
+                    alt="Logo App Liquidador1" 
+                    className="h-20 sm:h-28 w-auto object-contain" 
+                  />
+                </div>
+                
+                {/* Título - Centro */}
+                <div className="flex-1 flex justify-center mx-4">
+                  <span className="text-sm sm:text-2xl font-bold text-gray-800 text-center leading-tight">
+                    Simulador de Recargos y Horas Extras
+                  </span>
+                </div>
+                
+                {/* Logo Bomberos - Derecha */}
+                <div className="flex items-center mt-2 sm:mt-0">
                   <img 
                     src="/LogoFinal.png" 
                     alt="Logo Bomberos" 
-                    className="h-16 sm:h-20 w-auto object-contain sm:mr-4 mb-2 sm:mb-0" 
+                    className="h-16 sm:h-20 w-auto object-contain" 
                   />
-                  <div className="flex flex-col items-center sm:items-start">
-                    <span className="text-sm sm:text-lg font-bold text-gray-800 text-center sm:text-left leading-tight">
-                      Simulador de Recargos y Horas Extras
-                    </span>
-                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-2 sm:gap-4">
-                {/* Espacio para futuras acciones del header */}
               </div>
             </div>
           </header>
