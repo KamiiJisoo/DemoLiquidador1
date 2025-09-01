@@ -975,16 +975,16 @@ export default function ControlHorasExtras() {
 
       // Validación de turnos incompletos
       if (dia.entrada1 && !dia.salida1) {
-        erroresFechaActual.push(`Turno 1: Salida incompleta`)
+        erroresFechaActual.push(`Salida 1 incompleta`)
       }
       if (!dia.entrada1 && dia.salida1) {
-        erroresFechaActual.push(`Turno 1: Entrada incompleta`)
+        erroresFechaActual.push(`Entrada 1 incompleta`)
       }
       if (dia.entrada2 && !dia.salida2) {
-        erroresFechaActual.push(`Turno 2: Salida incompleta`)
+        erroresFechaActual.push(`Salida 2 incompleta`)
       }
       if (!dia.entrada2 && dia.salida2) {
-        erroresFechaActual.push(`Turno 2: Entrada incompleta`)
+        erroresFechaActual.push(`Entrada 2 incompleta`)
       }
 
       // Validación de solapamiento y duplicidad
